@@ -40,10 +40,20 @@ export default function XMLUploader({ onXMLLoad }: XMLUploaderProps) {
     setError(null);
 
     try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('URL\'den XML yüklenemedi');
+      const proxyResponse = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!proxyResponse.ok) {
+        const errorData = await proxyResponse.json();
+        throw new Error(errorData.error || 'URL\'den XML yüklenemedi');
+      }
       
-      const xmlContent = await response.text();
+      const { data: xmlContent } = await proxyResponse.json();
       onXMLLoad(xmlContent);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bir hata oluştu');

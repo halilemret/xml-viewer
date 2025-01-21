@@ -133,7 +133,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               <TreeNode
                 key={`${path}[${index}]`}
                 data={item}
-                name={`${index}`}
+                name={getArrayItemTitle(item, index)}
                 level={level + 1}
                 onSelect={onSelect}
                 selectedPaths={selectedPaths}
@@ -173,6 +173,99 @@ interface XMLTreeViewProps {
   onSelect?: (path: string, value: any) => void;
   selectedPaths?: Set<string>;
 }
+
+// Dizi elemanı için başlık oluşturan yardımcı fonksiyon
+const getArrayItemTitle = (item: any, index: number): string => {
+  // Eğer item bir nesne ise
+  if (typeof item === 'object' && item !== null) {
+    // Öncelikli alanları kontrol et (öncelik sırasına göre)
+    const priorityFields = [
+      // En yüksek öncelik: İsim/Ad ile ilgili
+      'ad', 'isim', 'name',
+      'urunadi', 'urunad', 'urunismi', 'productname', 'productTitle',
+      'musteriadi', 'musteriismi', 'customerName',
+      'kategoriadi', 'categoryName',
+      'baslik', 'title',
+      
+      // Orta öncelik: Açıklama ve detaylar
+      'aciklama', 'description',
+      'ozet', 'summary',
+      'etiket', 'label',
+      
+      // Düşük öncelik: Tür/Tip
+      'tur', 'tip', 'type',
+      'kategori', 'category',
+      'grup', 'group',
+      
+      // En düşük öncelik: Teknik tanımlayıcılar
+      'id', 'kimlik', 
+      'kod', 'code', 
+      'no', 'numara',
+      
+      // En son: Diğer yaygın alanlar
+      'tarih', 'date',
+      'fiyat', 'price',
+      'miktar', 'quantity',
+      'durum', 'status'
+    ];
+
+    // Büyük-küçük harf ve Türkçe karakter duyarsız arama için yardımcı fonksiyon
+    const normalizeStr = (str: string) => 
+      str.toLowerCase()
+         .replace(/ı/g, 'i')
+         .replace(/ğ/g, 'g')
+         .replace(/ü/g, 'u')
+         .replace(/ş/g, 's')
+         .replace(/ö/g, 'o')
+         .replace(/ç/g, 'c');
+
+    // Nesnenin tüm anahtarlarını normalize et
+    const normalizedKeys = Object.keys(item).map(key => ({
+      original: key,
+      normalized: normalizeStr(key)
+    }));
+
+    // Öncelikli alanları kontrol et
+    for (const field of priorityFields) {
+      const normalizedField = normalizeStr(field);
+      const match = normalizedKeys.find(k => k.normalized === normalizedField);
+      if (match && item[match.original]) {
+        const value = item[match.original];
+        // Değer çok uzunsa kısalt
+        const strValue = String(value);
+        const maxLength = 30;
+        const displayValue = strValue.length > maxLength 
+          ? strValue.slice(0, maxLength) + '...' 
+          : strValue;
+        return `${match.original}: ${displayValue}`;
+      }
+    }
+    
+    // Eğer öncelikli alan bulunamazsa, ilk string veya number değeri kullan
+    const firstValue = Object.entries(item).find(([_, value]) => 
+      typeof value === 'string' || typeof value === 'number'
+    );
+    if (firstValue) {
+      const [key, value] = firstValue;
+      const strValue = String(value);
+      const maxLength = 30;
+      const displayValue = strValue.length > maxLength 
+        ? strValue.slice(0, maxLength) + '...' 
+        : strValue;
+      return `${key}: ${displayValue}`;
+    }
+  }
+  
+  // Eğer item bir string veya number ise
+  if (typeof item === 'string' || typeof item === 'number') {
+    const maxLength = 30;
+    const value = String(item);
+    return value.length > maxLength ? value.slice(0, maxLength) + '...' : value;
+  }
+  
+  // Hiçbir özel durum yoksa indeks numarasını kullan
+  return `Öğe ${index + 1}`;
+};
 
 export default function XMLTreeView({ data, onSelect, selectedPaths }: XMLTreeViewProps) {
   return (
